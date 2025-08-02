@@ -1,0 +1,7 @@
+.env
+requirements.txt
+__pycache__
+config.py
+src/__pycache__
+
+
