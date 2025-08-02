@@ -1,5 +1,8 @@
-from fastapi import APIRouter
-from src.schemas.orderSchema import OrderSchema, UpdateOrderSchema
+from fastapi import APIRouter ,Depends
+from src.schemas.orderSchema import OrderResponseSchema, OrderCreateSchema
+from src.database import get_session
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.models.orderModel import OrderModel
 
 router = APIRouter(
     prefix = "/orderInfo",
@@ -8,9 +11,13 @@ router = APIRouter(
 
 
 
-@router.post("/")
-async def create_order_handler(orderPostSchema: OrderSchema):
-        return await orderPostSchema
+@router.post("/" ,summary="Create order", response_model=OrderResponseSchema)
+async def create_order_handler(order: OrderCreateSchema , session: AsyncSession = Depends(get_session)):
+        new_order = OrderModel(**order.model_dump())
+        session.add(new_order)
+        await session.commit()
+        await session.refresh(new_order)
+        return new_order
 
 
 @router.get("/")
