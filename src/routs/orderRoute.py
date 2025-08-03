@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter ,Depends, HTTPException
-from src.schemas.orderSchema import OrderResponseSchema, OrderCreateSchema
+from src.schemas.orderSchema import OrderResponseSchema, OrderCreateSchema, OrderUpdateSchema , OrderResponseSchema
 from src.database import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.orderModel import OrderModel
@@ -50,5 +50,22 @@ async def get_order_handler(
 
 
 @router.put("/")
-async def put_order_handler():
-        return await None
+async def put_order_handler(
+    id: str,
+    order: OrderUpdateSchema,
+    session: AsyncSession = Depends(get_session),
+) -> OrderResponseSchema:
+    try:
+        query = select(OrderModel).where(OrderModel.id == id)
+        result = await session.execute(query)
+        order_to_update = result.scalar_one_or_none()
+        if not order_to_update:
+            raise HTTPException(status_code=404, detail="Order not found")
+        for key, value in order.model_dump(exclude_unset=True).items():
+            setattr(order_to_update, key, value)
+        await session.commit()
+        await session.refresh(order_to_update)
+        return order_to_update
+    except Exception as e:
+        print(f"Error fetching order: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")    
