@@ -68,4 +68,49 @@ async def put_order_handler(
         return order_to_update
     except Exception as e:
         print(f"Error fetching order: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")    
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.delete("/{order_id}")
+async def delete_order_handler(
+    order_id: Optional[str] = None,  
+    user_id: Optional[str] = None,   
+    session: AsyncSession = Depends(get_session)
+):
+    if order_id:
+        result = await session.execute(
+            select(OrderModel).where(OrderModel.id == order_id)
+        )
+        order = result.scalars().first()  
+        
+        if not order:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Order with id {order_id} not found"
+            )
+        
+        await session.delete(order)
+        await session.commit()
+        return {"message": f"Order {order_id} deleted successfully"}
+    
+    elif user_id:
+        result = await session.execute(
+            select(OrderModel).where(OrderModel.user_id == user_id)
+        )
+        order = result.scalars().first()
+        
+        if not order:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No orders found for user {user_id}"
+            )
+        
+        await session.delete(order)
+        await session.commit()
+        return {"message": f"Order for user {user_id} deleted successfully"}
+    
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Either order_id or user_id must be provided"
+        )
+
