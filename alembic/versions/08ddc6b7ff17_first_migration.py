@@ -1,8 +1,8 @@
-"""Initial
+"""first migration
 
-Revision ID: 34ea0cd069cd
+Revision ID: 5ac874bfba26
 Revises: 
-Create Date: 2025-08-06 00:38:33.589741
+Create Date: 2025-08-18 03:32:07.187423
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '34ea0cd069cd'
+revision: str = '5ac874bfba26'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -32,7 +32,8 @@ def upgrade() -> None:
     op.alter_column('order', 'quantity',
                existing_type=sa.VARCHAR(length=36),
                type_=sa.Integer(),
-               existing_nullable=False)
+               existing_nullable=False,
+               postgresql_using='quantity::integer')
     op.alter_column('order', 'order_date',
                existing_type=sa.VARCHAR(length=36),
                type_=sa.String(length=50),
@@ -44,7 +45,8 @@ def upgrade() -> None:
     op.alter_column('order', 'status',
                existing_type=sa.VARCHAR(length=36),
                type_=sa.Boolean(),
-               existing_nullable=False)
+               existing_nullable=False,
+               postgresql_using='CASE WHEN status = \'true\' THEN TRUE ELSE FALSE END')
     op.alter_column('order', 'payment_method',
                existing_type=sa.VARCHAR(length=36),
                type_=sa.String(length=50),
@@ -64,15 +66,18 @@ def upgrade() -> None:
     op.alter_column('order', 'discount_applied',
                existing_type=sa.VARCHAR(length=36),
                type_=sa.Integer(),
-               existing_nullable=True)
+               existing_nullable=True,
+               postgresql_using='discount_applied::integer')
     op.alter_column('order', 'total_amount',
                existing_type=sa.VARCHAR(length=36),
                type_=sa.Integer(),
-               existing_nullable=False)
+               existing_nullable=False,
+               postgresql_using='total_amount::integer')
     op.alter_column('order', 'tax_amount',
                existing_type=sa.VARCHAR(length=36),
                type_=sa.Integer(),
-               existing_nullable=False)
+               existing_nullable=False,
+               postgresql_using='tax_amount::integer')
     op.alter_column('order', 'notes',
                existing_type=sa.VARCHAR(length=36),
                type_=sa.Text(),
@@ -103,15 +108,18 @@ def downgrade() -> None:
     op.alter_column('order', 'tax_amount',
                existing_type=sa.Integer(),
                type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
+               existing_nullable=False,
+               postgresql_using='tax_amount::text')
     op.alter_column('order', 'total_amount',
                existing_type=sa.Integer(),
                type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
+               existing_nullable=False,
+               postgresql_using='total_amount::text')
     op.alter_column('order', 'discount_applied',
                existing_type=sa.Integer(),
                type_=sa.VARCHAR(length=36),
-               existing_nullable=True)
+               existing_nullable=True,
+               postgresql_using='discount_applied::text')
     op.alter_column('order', 'tracking_number',
                existing_type=sa.String(length=50),
                type_=sa.VARCHAR(length=36),
@@ -131,7 +139,8 @@ def downgrade() -> None:
     op.alter_column('order', 'status',
                existing_type=sa.Boolean(),
                type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
+               existing_nullable=False,
+               postgresql_using='CASE WHEN status THEN \'true\' ELSE \'false\' END')
     op.alter_column('order', 'delivery_date',
                existing_type=sa.String(length=50),
                type_=sa.VARCHAR(length=36),
@@ -143,7 +152,8 @@ def downgrade() -> None:
     op.alter_column('order', 'quantity',
                existing_type=sa.Integer(),
                type_=sa.VARCHAR(length=36),
-               existing_nullable=False)
+               existing_nullable=False,
+               postgresql_using='quantity::text')
     op.alter_column('order', 'product_id',
                existing_type=sa.String(length=50),
                type_=sa.VARCHAR(length=36),
