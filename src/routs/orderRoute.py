@@ -1,10 +1,11 @@
 from typing import Optional
 from fastapi import APIRouter ,Depends, HTTPException
-from src.schemas.orderSchema import OrderResponseSchema, OrderCreateSchema, OrderUpdateSchema , OrderResponseSchema
+from src.schemas.orderSchema import OrderResponseSchema, OrderCreateSchema, OrderUpdateSchema , PaginatedOrderSchema
 from src.database import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.orderModel import OrderModel
 from sqlalchemy.future import select
+from src.order_services.OrderService import create_order , get_order , update_order, delete_order
 
 router = APIRouter(
     prefix = "/orderInfo",
@@ -15,102 +16,36 @@ router = APIRouter(
 
 @router.post("/" ,summary="Create order", response_model=OrderResponseSchema)
 async def create_order_handler(order: OrderCreateSchema , session: AsyncSession = Depends(get_session)):
-        new_order = OrderModel(**order.model_dump())
-        session.add(new_order)
-        await session.commit()
-        await session.refresh(new_order)
-        return new_order
+        return await create_order(order , session)
 
 
-@router.get("/", response_model=list[OrderResponseSchema])
+@router.get("/", summary = "Get order" ,response_model=PaginatedOrderSchema)
 async def get_order_handler(
      skip: int = 0,
      limit: int = 10,
      user_id: Optional[str] = None,
      product_id: Optional[str] = None,
      session: AsyncSession = Depends(get_session)):
-    try:
-
-        query = select(OrderModel).offset(skip).limit(limit)
-        if user_id:
-            query = query.where(OrderModel.user_id == user_id)
-        if product_id:    
-            query = query.where(OrderModel.product_id == product_id)
-        result = await session.execute(query)
-        orders = result.scalars().all()
-        
-        if not orders:
-            raise HTTPException(status_code=404, detail="Orders not found")
-        
-        return orders  
-        
-    except Exception as e:
-        print(f"Error fetching orders: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+    return await get_order(skip=skip,
+    limit=limit,
+    user_id=user_id,
+    product_id=product_id,
+    session=session)
 
 
-@router.put("/")
+@router.put("/" , summary= "Change order by id" , response_model= OrderUpdateSchema)
 async def put_order_handler(
     id: str,
     order: OrderUpdateSchema,
     session: AsyncSession = Depends(get_session),
 ) -> OrderResponseSchema:
-    try:
-        query = select(OrderModel).where(OrderModel.id == id)
-        result = await session.execute(query)
-        order_to_update = result.scalar_one_or_none()
-        if not order_to_update:
-            raise HTTPException(status_code=404, detail="Order not found")
-        for key, value in order.model_dump(exclude_unset=True).items():
-            setattr(order_to_update, key, value)
-        await session.commit()
-        await session.refresh(order_to_update)
-        return order_to_update
-    except Exception as e:
-        print(f"Error fetching order: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+    return await update_order(session = session, id = id , order = order)
 
-@router.delete("/{order_id}")
+@router.delete("/{order_id}" , summary= "Delete order")
 async def delete_order_handler(
     order_id: Optional[str] = None,  
     user_id: Optional[str] = None,   
     session: AsyncSession = Depends(get_session)
 ):
-    if order_id:
-        result = await session.execute(
-            select(OrderModel).where(OrderModel.id == order_id)
-        )
-        order = result.scalars().first()  
-        
-        if not order:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Order with id {order_id} not found"
-            )
-        
-        await session.delete(order)
-        await session.commit()
-        return {"message": f"Order {order_id} deleted successfully"}
-    
-    elif user_id:
-        result = await session.execute(
-            select(OrderModel).where(OrderModel.user_id == user_id)
-        )
-        order = result.scalars().first()
-        
-        if not order:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No orders found for user {user_id}"
-            )
-        
-        await session.delete(order)
-        await session.commit()
-        return {"message": f"Order for user {user_id} deleted successfully"}
-    
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="Either order_id or user_id must be provided"
-        )
+    return await delete_order(session = session , order_id = order_id , user_id = user_id)
 

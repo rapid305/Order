@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class OrderCreateSchema(BaseModel):
     user_id: str
@@ -36,6 +36,12 @@ class OrderResponseSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PaginatedOrderSchema(BaseModel):
+    items: List[OrderResponseSchema]
+    total: int
+    skip: int
+    limit: int        
 
 class OrderUpdateSchema(BaseModel):
     user_id: Optional[str] = None
