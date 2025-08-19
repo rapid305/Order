@@ -1,0 +1,61 @@
+# version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - ENVIRONMENT=development
+    container_name: fastapi_app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=db  # Используем имя сервиса
+      - DB_NAME=${DB_NAME}
+      - DB_PASS=${DB_PASS}
+      - DB_PORT=5432  # Внутренний порт контейнера
+      - DB_USER=${DB_USER}
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: always
+    networks:
+      - app-network
+    command: >
+      sh -c "sleep 15 && 
+             alembic upgrade head && 
+             uvicorn src.app:app --reload --host 0.0.0.0 --port 8000"
+
+  db:
+    image: postgres:13-alpine
+    container_name: postgres_db
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
